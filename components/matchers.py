@@ -39,21 +39,25 @@ class GNN_Matcher(object):
                    'desc2':torch.from_numpy(test_data['desc2'][np.newaxis]).cuda().float()}
         with torch.no_grad():
             res=self.model(feed_data,test_mode=True)
-            p=res['p']
-        index1,index2=self.match_p(p[0,:-1,:-1])
+            p=res['p']  # matching result matrix => depends on nbr of kp as input
+        index1,index2, scores=self.match_p(p[0,:-1,:-1])
         corr1,corr2=test_data['x1'][:,:2][index1.cpu()],test_data['x2'][:,:2][index2.cpu()]
         if len(corr1.shape)==1:
             corr1,corr2=corr1[np.newaxis],corr2[np.newaxis]
-        return corr1,corr2
+        return corr1,corr2, scores
     
     def match_p(self,p):#p N*M
-        score,index=torch.topk(p,k=1,dim=-1)
-        _,index2=torch.topk(p,k=1,dim=-2)
-        mask_th,index,index2=score[:,0]>self.p_th,index[:,0],index2.squeeze(0)
+        # todo return the score of matching
+        score,index=torch.topk(p,k=1,dim=-1) # take max score by row
+        _,index2=torch.topk(p,k=1,dim=-2) # take max score by column
+
+        mask_th,index,index2=score[:,0]>self.p_th,index[:,0],index2.squeeze(0)  # filter by score threshold
+
         mask_mc=index2[index] == torch.arange(len(p)).cuda()
         mask=mask_th&mask_mc
         index1,index2=torch.nonzero(mask).squeeze(1),index[mask]
-        return index1,index2
+        final_score = p[index1, index2]
+        return index1,index2, final_score
 
 
 class NN_Matcher(object):
