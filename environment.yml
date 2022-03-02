@@ -1,0 +1,16 @@
+name: sgmnet
+channels:
+  - defaults
+dependencies:
+  - python=3.7
+  - pyyaml
+  - h5py
+  - tqdm
+  - numpy
+  - tensorboardx
+  - cudatoolkit
+  - pytorch
+  - torchvision
+  - ipykernel
+prefix: /home/chang/miniconda3/envs/sgmnet
+
