@@ -17,7 +17,8 @@ class GNN_Matcher(object):
 
         config=namedtuple('config',config.keys())(*config.values())
         self.p_th=config.p_th
-        self.model = SGM_Model(config) if model_name=='SGM' else SG_Model(config) 
+        self.model = SGM_Model(config) if model_name=='SGM' else SG_Model(config)
+        print(self.model)
         self.model.cuda(),self.model.eval()
         checkpoint = torch.load(os.path.join(config.model_dir, 'model_best.pth'))
         #for ddp model
