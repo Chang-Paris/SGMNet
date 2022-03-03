@@ -10,6 +10,14 @@ class SuperGlueHandler:
         self.mapping = None
         self.device = None
         self.initialized = False
+        self.p_th = 0.2  # matching score threshold
+        self.config = dict({
+            "use_score_encoding": True,
+            "layer_num": 9,
+            "sink_iter": [10,100],
+            "head": 4,
+            "net_channels": 256
+        })  # Model definition configuration => todo clean this
 
 
     def initialize(self, ctx):
@@ -35,7 +43,10 @@ class SuperGlueHandler:
             raise RuntimeError("Missing the model definition file")
 
         from model import SG_Model
-        # todo define the model configuration dictionary
+        self.model = SG_Model(self.config)
+        self.model.cuda(), self.model.eval()
+        state_dict = torch.load(model_pt_path, map_location=self.device)
+        self.model.load_state_dict(state_dict)
 
         # todo load the state dict
 

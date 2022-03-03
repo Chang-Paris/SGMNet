@@ -19,6 +19,7 @@ class GNN_Matcher(object):
         checkpoint = torch.load(os.path.join(config.model_dir, 'model_best.pth'))
         #for ddp model
         if list(checkpoint['state_dict'].items())[0][0].split('.')[0]=='module':
+            print("yes")
             new_stat_dict=OrderedDict()
             for key,value in checkpoint['state_dict'].items():
                 new_stat_dict[key[7:]]=value

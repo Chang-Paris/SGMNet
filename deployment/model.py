@@ -122,6 +122,7 @@ class GNN_Matcher(object):
     def __init__(self, config):
         config = namedtuple('config', config.keys())(*config.values())
         self.p_th = config.p_th
+
         self.model = SG_Model(config)
         self.model.cuda(), self.model.eval()
         checkpoint = torch.load(os.path.join(config.model_dir, 'model_best.pth'))
@@ -132,6 +133,7 @@ class GNN_Matcher(object):
                 new_stat_dict[key[7:]] = value
             checkpoint['state_dict'] = new_stat_dict
         self.model.load_state_dict(checkpoint['state_dict'])
+
 
     def run(self, test_data):
         norm_x1, norm_x2 = normalize_size(test_data['x1'][:, :2], test_data['size1']), \
