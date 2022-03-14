@@ -1,11 +1,7 @@
+from collections import namedtuple
+
 import torch
 import torch.nn as nn
-import time
-from collections import OrderedDict,namedtuple
-import sys
-import os
-import numpy as np
-
 
 eps=1e-8
 
@@ -22,10 +18,10 @@ def sinkhorn(M,r,c,iteration):
 def sink_algorithm(M,dustbin,iteration):
     M = torch.cat([M, dustbin.expand([M.shape[0], M.shape[1], 1])], dim=-1)
     M = torch.cat([M, dustbin.expand([M.shape[0], 1, M.shape[2]])], dim=-2)
-    r = torch.ones([M.shape[0], M.shape[1] - 1],device='cuda')
-    r = torch.cat([r, torch.ones([M.shape[0], 1],device='cuda') * M.shape[1]], dim=-1)
-    c = torch.ones([M.shape[0], M.shape[2] - 1],device='cuda')
-    c = torch.cat([c, torch.ones([M.shape[0], 1],device='cuda') * M.shape[2]], dim=-1)
+    r = torch.ones([M.shape[0], M.shape[1] - 1],device='cpu')
+    r = torch.cat([r, torch.ones([M.shape[0], 1],device='cpu') * M.shape[1]], dim=-1)
+    c = torch.ones([M.shape[0], M.shape[2] - 1],device='cpu')
+    c = torch.cat([c, torch.ones([M.shape[0], 1],device='cpu') * M.shape[2]], dim=-1)
     p=sinkhorn(M,r,c,iteration)
     return p
 
@@ -45,7 +41,7 @@ class attention_block(nn.Module):
         self.query_filter=nn.Conv1d(channels, channels, kernel_size=1)
         self.key_filter=nn.Conv1d(channels,channels,kernel_size=1)
         self.value_filter=nn.Conv1d(channels,channels,kernel_size=1)
-        self.attention_filter=nn.Sequential(nn.Conv1d(2*channels,2*channels, kernel_size=1),nn.SyncBatchNorm(2*channels), nn.ReLU(),
+        self.attention_filter=nn.Sequential(nn.Conv1d(2*channels,2*channels, kernel_size=1),nn.BatchNorm1d(2*channels), nn.ReLU(),
                                              nn.Conv1d(2*channels, channels, kernel_size=1))
         self.mh_filter=nn.Conv1d(channels, channels, kernel_size=1)
 
@@ -78,13 +74,13 @@ class SG_Model(nn.Module):
         self.layer_num=config.layer_num
         self.sink_iter=config.sink_iter
         self.position_encoder = nn.Sequential(nn.Conv1d(3, 32, kernel_size=1) if config.use_score_encoding else nn.Conv1d(2, 32, kernel_size=1), 
-                                              nn.SyncBatchNorm(32), nn.ReLU(),
-                                              nn.Conv1d(32, 64, kernel_size=1), nn.SyncBatchNorm(64),nn.ReLU(),
-                                              nn.Conv1d(64, 128, kernel_size=1), nn.SyncBatchNorm(128), nn.ReLU(),
-                                              nn.Conv1d(128, 256, kernel_size=1), nn.SyncBatchNorm(256), nn.ReLU(),
+                                              nn.BatchNorm1d(32), nn.ReLU(),
+                                              nn.Conv1d(32, 64, kernel_size=1), nn.BatchNorm1d(64),nn.ReLU(),
+                                              nn.Conv1d(64, 128, kernel_size=1), nn.BatchNorm1d(128), nn.ReLU(),
+                                              nn.Conv1d(128, 256, kernel_size=1), nn.BatchNorm1d(256), nn.ReLU(),
                                               nn.Conv1d(256, config.net_channels, kernel_size=1))
        
-        self.dustbin=nn.Parameter(torch.tensor(1,dtype=torch.float32,device='cuda'))
+        self.dustbin=nn.Parameter(torch.tensor(1,dtype=torch.float32,device='cpu'))
         self.self_attention_block=nn.Sequential(*[attention_block(config.net_channels,config.head,'self') for _ in range(config.layer_num)])
         self.cross_attention_block=nn.Sequential(*[attention_block(config.net_channels,config.head,'cross') for _ in range(config.layer_num)])
         self.final_project=nn.Conv1d(config.net_channels, config.net_channels, kernel_size=1)

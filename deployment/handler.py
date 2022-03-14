@@ -1,13 +1,12 @@
-import os
-import torch
-import logging
-import numpy as np
-import cv2
 import base64
-from PIL import Image
+import logging
+import os
+from collections import OrderedDict
 from io import BytesIO
 
-from collections import OrderedDict
+import cv2
+import numpy as np
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +26,10 @@ def sinkhorn(M,r,c,iteration):
 def sink_algorithm(M,dustbin,iteration):
     M = torch.cat([M, dustbin.expand([M.shape[0], M.shape[1], 1])], dim=-1)
     M = torch.cat([M, dustbin.expand([M.shape[0], 1, M.shape[2]])], dim=-2)
-    r = torch.ones([M.shape[0], M.shape[1] - 1],device='cuda')
-    r = torch.cat([r, torch.ones([M.shape[0], 1],device='cuda') * M.shape[1]], dim=-1)
-    c = torch.ones([M.shape[0], M.shape[2] - 1],device='cuda')
-    c = torch.cat([c, torch.ones([M.shape[0], 1],device='cuda') * M.shape[2]], dim=-1)
+    r = torch.ones([M.shape[0], M.shape[1] - 1],device='cpu')
+    r = torch.cat([r, torch.ones([M.shape[0], 1],device='cpu') * M.shape[1]], dim=-1)
+    c = torch.ones([M.shape[0], M.shape[2] - 1],device='cpu')
+    c = torch.cat([c, torch.ones([M.shape[0], 1],device='cpu') * M.shape[2]], dim=-1)
     p=sinkhorn(M,r,c,iteration)
     return p
 
@@ -63,7 +62,7 @@ class SuperGlueHandler:
 
         mask_th, index, index2 = score[:, 0] > self.p_th, index[:, 0], index2.squeeze(0)  # filter by score threshold
 
-        mask_mc = index2[index] == torch.arange(len(p)).cuda()
+        mask_mc = index2[index] == torch.arange(len(p)).to(self.device)
         mask = mask_th & mask_mc
         index1, index2 = torch.nonzero(mask).squeeze(1), index[mask]
         final_score = p[index1, index2]
@@ -77,9 +76,7 @@ class SuperGlueHandler:
 
         properties = ctx.system_properties
         self.device = torch.device(
-            "cuda:" + str(properties.get("gpu_id"))
-            if torch.cuda.is_available()
-            else "cpu"
+            "cpu"
         )
 
         logger.info(f"Device on initialization is: {self.device}")
@@ -97,7 +94,7 @@ class SuperGlueHandler:
         from model import SG_Model
 
         self.model = SG_Model(self.config)
-        self.model.cuda(), self.model.eval()
+        self.model.to(self.device), self.model.eval()
         checkpoint = torch.load(model_pt_path, map_location=self.device)
 
         # load the state dict
@@ -206,10 +203,10 @@ class SuperGlueHandler:
                            normalize_size(data['x2'][:, :2], data['size2'])
         x1, x2 = np.concatenate([norm_x1, data['x1'][:, 2, np.newaxis]], axis=-1), np.concatenate(
             [norm_x2, data['x2'][:, 2, np.newaxis]], axis=-1)
-        feed_data = {'x1': torch.from_numpy(x1[np.newaxis]).cuda().float(),
-                     'x2': torch.from_numpy(x2[np.newaxis]).cuda().float(),
-                     'desc1': torch.from_numpy(data['desc1'][np.newaxis]).cuda().float(),
-                     'desc2': torch.from_numpy(data['desc2'][np.newaxis]).cuda().float()}
+        feed_data = {'x1': torch.from_numpy(x1[np.newaxis]).to(self.device).float(),
+                     'x2': torch.from_numpy(x2[np.newaxis]).to(self.device).float(),
+                     'desc1': torch.from_numpy(data['desc1'][np.newaxis]).to(self.device).float(),
+                     'desc2': torch.from_numpy(data['desc2'][np.newaxis]).to(self.device).float()}
         with torch.no_grad():
             res = self.model(feed_data, test_mode=True)
             prediction = res['p']  # matching result matrix => depends on nbr of kp as input
