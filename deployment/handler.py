@@ -109,76 +109,33 @@ class SuperGlueHandler:
 
     def preprocess(self, data):
         # load image
+        #logger.info("The input data is %s "%str(data))
+        logger.info("the input data[0] type is %s "%str(type(data[0])))
+        if "body" in data[0]:
+            logger.info("the input data[0]['body'] type is %s "%str(type(data[0]["body"])))
 
-        logger.info("len of data[0] is %d "%len(data[0]))
-        logger.info(data[0].keys())
-        logger.info(len(data))
-        logger.info("len of values %d " % len(data[0].values()))
-        logger.info("len of image1  %d " % len(data[0]["file1"]))
-        logger.info("type of image1  %s " % str(type(data[0]["file1"])))
-
-        # read image
-        img1_bype = data[0].get("file1")
-        logger.info(img1_bype)
-        if img1_bype is None:
-            img1_bype = data[0].get("body")
-            logging.info(data[0].get("body"))
-        logger.info("img1_bype.shape %s " % str(len(img1_bype)))
-        logger.info(img1_bype)
-        nparr = np.frombuffer(img1_bype, np.uint8)
-        logger.info("nparr.shape %s " % str(nparr.shape))
-        img1 = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        logger.info("img1.shape %s " % str(img1.shape))
-        logger.info("img1.mean %s " % str(np.mean(img1)))
-
-        img2_bype = data[0].get("file2")
-        if img2_bype is None:
-            img2_bype = data[1].get("body")
-
-        nparr = np.frombuffer(img2_bype, np.uint8)
-        logger.info("typre of nparr %s" % str(type(nparr)))
-
-        img2 = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        logger.info("img1.shape %s " % str(img2.shape))
-        logger.info("img2.mean %s " % str(np.mean(img2)))
+        # decode data
+        sagemaker_data = data[0]["body"]
+        import json
+        decoded1 = json.loads(sagemaker_data)
+        decoded = json.loads(decoded1.replace("'", '"').replace(' ', ''))
+        logging.info("loaded data type is %s "%str(type(decoded)))
+        logging.info("loaded data is %s "%str(decoded))
 
 
-        kpt1_byte = data[0].get("kpt1")
-        if kpt1_byte is None:
-            kpt1_byte = data[2].get("body")
-
-        kpt1_buffer = BytesIO(kpt1_byte)
-        kpt1 = np.load(kpt1_buffer)
+        kpt1 = np.array(decoded["kpt1"])
         logger.info("kpt1 1 shape %s " % (str(kpt1.shape)))
         logger.info("kpt1.mean %s " % str(np.mean(kpt1)))
 
-
-        desc1_byte = data[0].get("desc1")
-        if desc1_byte is None:
-            desc1_byte = data[3].get("body")
-
-        desc1_buffer = BytesIO(desc1_byte)
-        desc1 = np.load(desc1_buffer)
+        desc1 = np.array(decoded["desc1"])
         logger.info("desc1 1 shape %s " % (str(desc1.shape)))
         logger.info("desc1.mean %s " % str(np.mean(desc1)))
 
-
-        kpt2_byte = data[0].get("kpt2")
-        if kpt2_byte is None:
-            kpt2_byte = data[4].get("body")
-
-        kpt2_buffer = BytesIO(kpt2_byte)
-        kpt2 = np.load(kpt2_buffer)
+        kpt2 = np.array(decoded["kpt2"])
         logger.info("kpt2 2 shape %s " % (str(kpt2.shape)))
         logger.info("kpt2.mean %s " % str(np.mean(kpt2)))
 
-
-        desc2_byte = data[0].get("desc2")
-        if desc2_byte is None:
-            desc2_byte = data[5].get("body")
-
-        desc2_buffer = BytesIO(desc2_byte)
-        desc2 = np.load(desc2_buffer)
+        desc2 = np.array(decoded["desc2"])
         logger.info("desc 2 shape %s " % (str(desc2.shape)))
         logger.info("desc2.mean %s " % str(np.mean(desc2)))
 
@@ -187,7 +144,7 @@ class SuperGlueHandler:
         # img1 = Image.open(io.BytesIO(img1_bype)).convert('RGB')
         # logger.info("img1 PIL by %s " % str(img1.size))
         """
-        size1, size2 = np.flip(np.asarray(img1.shape[:2])), np.flip(np.asarray(img2.shape[:2]))
+        size1, size2 = np.array(decoded["size1"]), np.array(decoded["size2"])
         logger.info("size 1 size2 %s %s" % (size1, size2))
 
         # compose a new dictionary
@@ -218,9 +175,9 @@ class SuperGlueHandler:
         if len(corr1.shape) == 1:
             corr1, corr2 = corr1[np.newaxis], corr2[np.newaxis]
         matching_result = dict({
-            "demo1_pt": corr1,
-            "demo2_pt": corr2,
-            "match_score": scores
+            "demo1_pt": corr1.astype(np.uint16).tolist(),
+            "demo2_pt": corr2.astype(np.uint16).tolist(),
+            "match_score": scores.tolist()
         })
 
         encoded_dictionary = bytes(str(matching_result), "utf-8")
