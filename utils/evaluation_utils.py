@@ -41,11 +41,26 @@ def draw_match(img1, img2, corr1, corr2,inlier=[True],color=None,radius1=1,radiu
     if color is None:
         color = [(0, 255, 0) if cur_inlier else (0,0,255) for cur_inlier in inlier]
     if len(color)==1:
+        """
         display = cv2.drawMatches(img1, corr1_key, img2, corr2_key, draw_matches, None,
-                              matchColor=color[0],
                               singlePointColor=color[0],
                               flags=4
                               )
+        """
+        import random
+        height, width = max(img1.shape[0], img2.shape[0]), img1.shape[1] + img2.shape[1]
+        display = np.zeros([height, width, 3], np.uint8)
+        display[:img1.shape[0], :img1.shape[1]] = img1
+        display[:img2.shape[0], img1.shape[1]:] = img2
+        for i in range(len(corr1)):
+            choice = random.random()
+            if choice < 0.8:
+                continue
+            left_x, left_y, right_x, right_y = int(corr1[i][0]), int(corr1[i][1]), int(
+                corr2[i][0] + img1.shape[1]), int(corr2[i][1])
+            cur_color = (random.randint(1,255), random.randint(10,255), random.randint(10,255))
+            thicness = random.randint(1,3)
+            cv2.line(display, (left_x, left_y), (right_x, right_y), cur_color, thicness, lineType=cv2.LINE_AA)
     else:
         height,width=max(img1.shape[0],img2.shape[0]),img1.shape[1]+img2.shape[1]
         display=np.zeros([height,width,3],np.uint8)
