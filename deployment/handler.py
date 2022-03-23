@@ -45,7 +45,7 @@ class SuperGlueHandler:
         self.mapping = None
         self.device = None
         self.initialized = False
-        self.p_th = 0.2  # matching score threshold
+        self.p_th = 0.6  # matching score threshold
         self.config = dict({
             "use_score_encoding": True,
             "layer_num": 9,
